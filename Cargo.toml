@@ -12,7 +12,6 @@ readme = "README.md"
 repository = "https://github.com/AlexanderThaller/prometheus_exporter"
 
 edition = "2021"
-rust-version = "1.62"
 
 [package.metadata.docs.rs]
 features = ["logging", "internal_metrics"]
@@ -29,11 +28,11 @@ ascii = "1"
 either = "1"
 log = { version = "0.4", optional = true }
 prometheus = { version = "0.13", default-features = false }
-thiserror = "1"
+thiserror = "2.0.12"
 tiny_http = { version = "0.12", default-features = false }
 
 [dev-dependencies]
-env_logger = "0.9"
+env_logger = "0.11.7"
 log = { version = "0.4" }
 rand = "0.8"
-reqwest = { version = "0.11", default-features = false, features = ["blocking"] }
+reqwest = { version = "0.12.15", default-features = false, features = ["blocking"] }
