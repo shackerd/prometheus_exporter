@@ -274,6 +274,25 @@ pub struct Exporter {
     update_lock: Arc<Mutex<()>>,
 }
 
+/// Lock taken by the http server while it returns the metrics. Holding it
+/// while updating several metrics makes a request wait until the update is
+/// complete, instead of returning part of it.
+#[derive(Clone, Debug)]
+pub struct UpdateLock(Arc<Mutex<()>>);
+
+impl UpdateLock {
+    /// Wait until the http server is not returning the metrics, then hold
+    /// the lock until the returned guard is dropped.
+    ///
+    /// # Panics
+    ///
+    /// If the lock is poisoned, which should never happen.
+    #[must_use = "the lock is released as soon as the guard is dropped"]
+    pub fn lock(&self) -> MutexGuard<'_, ()> {
+        self.0.lock().expect("poisioned mutex. should never happen")
+    }
+}
+
 /// Helper to export prometheus metrics via http.
 #[derive(Debug)]
 struct Server {}
@@ -482,6 +501,13 @@ impl Exporter {
         self.update_lock
             .lock()
             .expect("poisioned mutex. should never happen")
+    }
+
+    /// Return the lock taken by the http server while it returns the
+    /// metrics, to hold it while updating them from another thread or task.
+    #[must_use]
+    pub fn update_lock(&self) -> UpdateLock {
+        UpdateLock(Arc::clone(&self.update_lock))
     }
 
     /// Set `status` for the exporter. When set to [`Status::Failing`] the
