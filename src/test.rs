@@ -175,3 +175,49 @@ fn set_failed() {
     assert!(body.contains(&format!("{metric_name} 1")));
     assert!(body.contains("up 1"));
 }
+
+#[test]
+fn update_lock() {
+    let (binding_raw, listener) = get_binding();
+    let metric_name = "test_update_lock_counter";
+
+    let registry = Registry::new();
+
+    let exporter = crate::Exporter::builder_listener(listener)
+        .with_registry(&registry)
+        .start()
+        .expect("can not start exporter");
+
+    let counter = register_counter_with_registry!(metric_name, "help", registry)
+        .expect("can not register counter");
+
+    let update_lock = exporter.update_lock();
+    let guard = update_lock.lock();
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let body = reqwest::blocking::get(format!("http://{binding_raw}"))
+            .expect("can not make request")
+            .text()
+            .expect("can not extract body");
+        sender.send(body).expect("can not send body");
+    });
+
+    // the request waits while the lock is held
+    assert!(
+        receiver
+            .recv_timeout(std::time::Duration::from_millis(500))
+            .is_err()
+    );
+
+    counter.inc();
+    drop(guard);
+
+    let body = receiver
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("the request did not complete once the lock was released");
+
+    println!("body:\n{body}");
+
+    assert!(body.contains(&format!("{metric_name} 1")));
+}

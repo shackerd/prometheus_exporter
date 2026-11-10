@@ -7,7 +7,6 @@ use env_logger::{
 };
 use log::info;
 use prometheus_exporter::prometheus::register_gauge;
-use rand::Rng;
 use std::net::SocketAddr;
 
 fn main() {
@@ -27,8 +26,6 @@ fn main() {
     let random = register_gauge!("run_and_repeat_random", "will set a random value")
         .expect("can not create gauge random_value_metric");
 
-    let mut rng = rand::thread_rng();
-
     loop {
         {
             // Will block until duration is elapsed.
@@ -37,7 +34,7 @@ fn main() {
             info!("Updating metrics");
 
             // Update metric with random value.
-            let new_value = rng.gen();
+            let new_value = rand::random();
             info!("New random value: {}", new_value);
 
             random.set(new_value);
